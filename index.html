@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>РЖД Соседи</title>
+    <style>
+        :root {
+            --bg-main: #f5f7fa; 
+            --bg-card: #ffffff;
+            --bg-card-hover: #f0f2f5;
+            --text-main: #1a1a1a;
+            --text-muted: #777777;
+            --accent: #e21a1a;
+            --accent-hover: #b81414;
+            --success: #4caf50;
+            --warning: #f39c12;
+            --border-color: #e0e0e0;
+            --border-radius: 16px;
+            --transition: all 0.3s ease;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+
+        body { background-color: #e4e8ee; color: var(--text-main); display: flex; justify-content: center; min-height: 100vh; overflow: hidden; }
+
+        /* ================= ЭКРАН ВХОДА / РЕГИСТРАЦИИ ================= */
+        .auth-screen {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: #fff; z-index: 5000; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; padding: 20px;
+            overflow-y: auto;
+        }
+        .auth-screen.hidden { display: none; }
+        .auth-logo { font-size: 32px; font-weight: 900; color: var(--accent); margin-bottom: 20px; text-align: center; line-height: 1.2;}
+        
+        .auth-tabs { display: flex; background: var(--bg-main); border-radius: 10px; padding: 4px; margin-bottom: 20px; width: 100%; max-width: 400px;}
+        .auth-tab { flex: 1; padding: 10px; text-align: center; font-size: 14px; font-weight: 600; color: var(--text-muted); cursor: pointer; border-radius: 8px; transition: 0.2s; }
+        .auth-tab.active { background: #fff; color: var(--text-main); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+
+        .auth-card { width: 100%; max-width: 400px; background: var(--bg-main); border-radius: 20px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .auth-card h2 { font-size: 20px; margin-bottom: 20px; text-align: center;}
+        .input-group { margin-bottom: 16px; }
+        .input-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;}
+        .input-group input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 14px; outline: none; }
+        .input-group input:focus { border-color: var(--accent); }
+        .auth-btn { width: 100%; padding: 14px; background: var(--accent); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.2s;}
+        .auth-btn:hover { background: var(--accent-hover); }
+        .auth-hint { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 16px; }
+        .auth-hint b { color: var(--accent); cursor: pointer; }
+
+        /* Быстрый вход (демо-аккаунты) */
+        .quick-login-list { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+        .quick-login-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: #fff; border-radius: 10px; border: 1px solid var(--border-color); cursor: pointer; transition: 0.2s; }
+        .quick-login-item:hover { border-color: var(--accent); background: #fff0f0; }
+        .quick-login-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; }
+        .quick-login-info h4 { font-size: 14px; color: var(--text-main); }
+        .quick-login-info span { font-size: 11px; color: var(--text-muted); }
+
+        /* ================= ОБЩИЙ КАРКАС ================= */
+        .app-wrapper {
+            width: 100%; max-width: 100%; height: 100vh; display: none;
+            flex-direction: column; position: relative; background-color: var(--bg-main);
+            overflow: hidden;
+        }
+        .app-wrapper.active { display: flex; }
+
+        /* СТАТУС-БАР */
+        .status-bar {
+            background: linear-gradient(90deg, #1a1a1a 0%, #333 100%);
+            color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;
+            font-size: 13px; z-index: 50; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+        .status-left { display: flex; align-items: center; gap: 8px; font-weight: 600;}
+        .status-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; box-shadow: 0 0 8px var(--success); animation: pulse 1.5s infinite;}
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .status-right { font-size: 12px; color: #ccc; }
+        .status-right strong { color: #fff; }
+
+        .main-content { flex: 1; padding: 16px; display: flex; flex-direction: column; overflow-y: auto; padding-bottom: 90px; }
+        .tab-content { display: none; flex-direction: column; gap: 16px; animation: fadeIn 0.3s; }
+        .tab-content.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* КАРТОЧКИ */
+        .card { background-color: var(--bg-card); border-radius: var(--border-radius); padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); border: 1px solid var(--border-color); margin-bottom: 12px; width: 100%; }
+        .card-title { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center; }
+
+        /* Билет */
+        .ticket-card { background: linear-gradient(135deg, #ffffff 0%, #fff0f0 100%); border: 1px solid #ffcdd2; border-top: 4px solid var(--accent); }
+        .ticket-route { display: flex; justify-content: space-between; align-items: center; margin: 16px 0; }
+        .ticket-point h2 { font-size: 22px; color: var(--text-main); }
+        .ticket-point p { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+        .ticket-time { font-size: 18px; font-weight: bold; margin-top: 4px; color: var(--text-main); }
+        .ticket-line { flex: 1; height: 2px; background-color: #e0e0e0; margin: 0 16px; position: relative; }
+        .ticket-line::before, .ticket-line::after { content: ''; position: absolute; width: 8px; height: 8px; background-color: var(--accent); border-radius: 50%; top: -3px; }
+        .ticket-line::before { left: 0; } .ticket-line::after { right: 0; }
+        .ticket-details { display: flex; justify-content: space-between; background-color: #fff; padding: 12px; border-radius: 8px; font-size: 13px; box-shadow: inset 0 0 5px rgba(0,0,0,0.02); }
+        .ticket-details span { display: block; color: var(--text-muted); font-size: 10px; margin-bottom: 2px;}
+
+        /* Тумблер */
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; background-color: var(--bg-card); padding: 16px; border-radius: var(--border-radius); border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 12px; width: 100%;}
+        .toggle-text h3 { font-size: 15px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; color: var(--text-main); }
+        .toggle-text p { font-size: 12px; color: var(--text-muted); }
+        .switch { position: relative; display: inline-block; width: 50px; height: 28px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        /* Таймлайн */
+        .timeline { border-left: 2px solid #eee; margin-left: 8px; padding-left: 16px; display: flex; flex-direction: column; gap: 20px; }
+        .timeline-item { position: relative; }
+        .timeline-dot { position: absolute; left: -21px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: #ccc; border: 2px solid #fff; }
+        .timeline-dot.active { background: var(--accent); }
+        .timeline-title { font-size: 14px; font-weight: bold; color: var(--text-main); }
+        .timeline-time { font-size: 12px; color: var(--text-muted); margin-top: 2px;}
+        .badge { font-size: 10px; background: #fff3e0; padding: 2px 6px; border-radius: 4px; color: var(--warning); margin-left: 8px; }
+
+        /* Попутчики */
+        .ai-card { background: linear-gradient(90deg, #fff0f0 0%, #ffffff 100%); border-left: 4px solid var(--accent); }
+        .passenger-card { display: flex; flex-direction: column; gap: 12px; }
+        .passenger-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .passenger-info { display: flex; gap: 12px; align-items: center; }
+        .avatar { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; color: #fff; flex-shrink: 0; object-fit: cover;}
+        .avatar.blue { background-color: #3b5998; } .avatar.green { background-color: #2e7d32; } .avatar.grey { background-color: #555; } .avatar.purple { background-color: #6a1b9a; }
+        .name-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;}
+        .name-row h3 { font-size: 16px; color: var(--text-main); }
+        .name-row span { font-size: 12px; color: var(--text-muted); }
+        .rating { font-size: 12px; color: var(--warning); margin-top: 4px; font-weight: 600;}
+        .match-percent { background-color: #e8f5e9; color: var(--success); padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; border: 1px solid #a5d6a7; white-space: nowrap;}
+        .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+        .tag { background-color: #f0f0f0; color: #555; padding: 4px 10px; border-radius: 12px; font-size: 11px; border: 1px solid #e0e0e0; }
+        .tag.highlight { border-color: #ffcdd2; color: var(--accent); background-color: #fff0f0; }
+
+        .btn { width: 100%; padding: 12px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: var(--transition); text-align: center; }
+        .btn-primary { background-color: var(--accent); color: white; }
+        .btn-primary:hover { background-color: var(--accent-hover); }
+        .btn-outline { background-color: transparent; border: 1px solid #ccc; color: var(--text-main); }
+        .btn-outline:hover { background-color: #f0f0f0; }
+        .btn-warning { background-color: #fff3e0; color: var(--warning); border: 1px solid #ffe0b2; font-size: 12px; padding: 8px;}
+        .btn-small { width: auto; padding: 6px 12px; font-size: 12px; }
+
+        /* Сообщения */
+        .chat-list { display: flex; flex-direction: column; gap: 4px; background: var(--bg-card); border-radius: var(--border-radius); overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03); border: 1px solid var(--border-color); width: 100%;}
+        .chat-item { display: flex; gap: 12px; padding: 16px; cursor: pointer; transition: var(--transition); border-bottom: 1px solid var(--border-color); }
+        .chat-item:last-child { border-bottom: none; }
+        .chat-item:hover { background-color: var(--bg-card-hover); }
+        .chat-icon { width: 46px; height: 46px; border-radius: 50%; background-color: #eee; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;}
+        .chat-info { flex: 1; display: flex; flex-direction: column; justify-content: center; min-width: 0;}
+        .chat-top { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .chat-top h4 { font-size: 15px; color: var(--text-main); }
+        .chat-top span { font-size: 12px; color: var(--text-muted); }
+        .chat-bottom { display: flex; justify-content: space-between; align-items: center; }
+        .chat-bottom p { font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Чат */
+        .chat-room { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg-main); z-index: 200; flex-direction: column; }
+        .chat-room.active { display: flex; }
+        .chat-header { display: flex; align-items: center; gap: 12px; background: var(--bg-card); padding: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 10; flex-shrink: 0; }
+        .chat-header button { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-main); padding-right: 8px;}
+        .messages-container { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 16px; padding-bottom: 90px; }
+        .msg { max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.4; word-wrap: break-word;}
+        .msg.in { background: #fff; align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); color: var(--text-main);}
+        .msg.out { background: var(--accent); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; box-shadow: 0 2px 4px rgba(226,26,26,0.2);}
+        .chat-input-wrapper { position: absolute; bottom: 70px; left: 0; right: 0; background: #fff; padding: 10px 16px; border-top: 1px solid var(--border-color); display: flex; gap: 8px; z-index: 20; }
+        .chat-input-wrapper input { flex: 1; padding: 12px; border-radius: 20px; border: 1px solid var(--border-color); background: var(--bg-main); outline: none; font-size: 14px;}
+        .chat-input-wrapper button { background: var(--accent); color: white; border: none; border-radius: 50%; width: 44px; height: 44px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink:0;}
+
+        /* Профиль */
+        .profile-header { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 20px 0; position: relative;}
+        .avatar-large-container { position: relative; cursor: pointer;}
+        .avatar-large { width: 80px; height: 80px; border-radius: 50%; background-color: #6a1b9a; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: bold; color: white; object-fit: cover;}
+        .avatar-edit-overlay { position: absolute; bottom: 0; right: 0; background: var(--accent); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; border: 2px solid white;}
+        .profile-header h2 { font-size: 22px; color: var(--text-main); }
+        
+        .profile-tabs { display: flex; background-color: var(--bg-main); border-radius: 12px; padding: 4px; margin-bottom: 16px; overflow-x: auto;}
+        .profile-tab-btn { flex: 1; padding: 10px; border: none; background: transparent; color: var(--text-muted); font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer; transition: 0.2s; white-space: nowrap;}
+        .profile-tab-btn.active { background-color: var(--bg-card); color: var(--text-main); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        .profile-tab-content { display: none; }
+        .profile-tab-content.active { display: block; animation: fadeIn 0.3s; }
+
+        .info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); font-size: 14px; align-items: center;}
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: var(--text-muted); }
+        .info-value { font-weight: 500; text-align: right; color: var(--text-main); }
+        .info-value.green { color: var(--success); }
+        
+        .verify-badge { background: #e8f5e9; color: var(--success); border: 1px solid var(--success); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;}
+        .verify-badge:hover { background: #c8e6c9; }
+
+        /* Отзывы */
+        .review-item { background: var(--bg-main); padding: 16px; border-radius: 12px; margin-bottom: 12px; font-size: 13px; border: 1px solid var(--border-color);}
+        .review-header { display: flex; justify-content: space-between; margin-bottom: 8px; align-items: center;}
+        .review-author { display: flex; align-items: center; gap: 10px; }
+        .review-author-avatar { width: 36px; height: 36px; border-radius: 50%; background: #ddd; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #555; font-size: 14px;}
+        .review-author-info h4 { font-size: 14px; margin-bottom: 2px; color: var(--text-main);}
+        .review-author-info span { font-size: 11px; color: var(--text-muted);}
+        .review-stars { color: var(--warning); font-size: 14px; font-weight: bold;}
+        .review-date { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; display: block;}
+        .review-text { color: #444; line-height: 1.5; margin-bottom: 10px;}
+        .review-criteria { display: flex; flex-wrap: wrap; gap: 6px; }
+        .criterion { background: #fff; border: 1px solid var(--border-color); padding: 4px 8px; border-radius: 6px; font-size: 11px; color: #555;}
+        .criterion b { color: var(--success); }
+
+        /* Нижнее меню */
+        .bottom-nav { position: absolute; bottom: 0; left: 0; width: 100%; background-color: #ffffff; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid var(--border-color); z-index: 100; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text-muted); text-decoration: none; font-size: 10px; cursor: pointer; transition: var(--transition); }
+        .nav-item svg { width: 24px; height: 24px; fill: currentColor; }
+        .nav-item.active { color: var(--accent); }
+
+        /* Модальное окно */
+        .modal-overlay { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 300; justify-content: center; align-items: center; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: #fff; width: 90%; max-width: 450px; border-radius: 20px; padding: 24px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 80vh; overflow-y: auto; position: relative;}
+        .modal h3 { margin-bottom: 16px; color: var(--text-main); }
+        .stars { display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; font-size: 32px; cursor: pointer; color: #ccc; }
+        .stars span.active { color: var(--warning); }
+
+        .modal-close-btn { position: absolute; top: 16px; right: 16px; width: 32px; height: 32px; background: #f0f0f0; border: none; border-radius: 50%; font-size: 20px; line-height: 1; color: #777; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .modal-close-btn:hover { background: #e0e0e0; color: #333; }
+
+        .toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 8px; padding: 14px; position: fixed; z-index: 1000; left: 50%; bottom: 90px; transform: translateX(-50%); font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s, bottom 0.3s; }
+        .toast.show { visibility: visible; opacity: 1; bottom: 100px; }
+
+        .edit-input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 14px; font-family: inherit; outline: none; margin-bottom: 12px; resize: vertical;}
+        .edit-input:focus { border-color: var(--accent); }
+        .edit-label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600; text-align: left;}
+
+        /* ========================================================= */
+        /* ДЕСКТОПНАЯ ВЕРСИЯ                                         */
+        /* ========================================================= */
+        @media (min-width: 768px) {
+            body { background-color: #e4e8ee; align-items: center; padding: 20px;}
+            .app-wrapper { max-width: 1200px; width: 100%; height: 90vh; flex-direction: row; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); background: #fff; }
+            .status-bar { position: absolute; top: 0; left: 280px; right: 0; height: 56px; border-top-left-radius: 24px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; }
+            .bottom-nav { position: relative; width: 280px; height: 100%; flex-direction: column; justify-content: flex-start; padding: 80px 20px 30px; border-top: none; border-right: 1px solid var(--border-color); background-color: #fafafa; box-shadow: none; flex-shrink: 0; }
+            .nav-item { flex-direction: row; font-size: 16px; padding: 15px; border-radius: 12px; gap: 15px; margin-bottom: 8px; width: 100%;}
+            .nav-item:hover { background-color: #eee; }
+            .nav-item.active { background-color: #fff0f0; color: var(--accent); }
+            .desktop-logo { display: block; font-size: 24px; font-weight: 900; margin-bottom: 40px; color: var(--accent); text-align: center; letter-spacing: 1px; position: absolute; top: 30px; left: 0; right: 0; }
+            .main-content { flex: 1; padding: 80px 40px 40px; background: var(--bg-main); overflow-y: auto; display: block; }
+            .tab-content { display: none; width: 100%; max-width: 900px; margin: 0 auto; }
+            .tab-content.active { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+            .card { width: 100%; margin-bottom: 0; }
+            .ticket-card, .ai-card, .toggle-row, .timeline-card, .chat-list { grid-column: 1 / -1; }
+            .profile-container { grid-column: 1 / -1; display: grid; grid-template-columns: 350px 1fr; gap: 24px; align-items: start; }
+            .chat-room { left: 280px; border-radius: 24px 0 0 24px; padding-top: 0; }
+            .chat-header { border-radius: 0; padding-top: 16px; height: 56px; box-sizing: border-box; }
+            .chat-input-wrapper { bottom: 0; padding: 16px; }
+            .messages-container { padding-bottom: 80px; padding-top: 16px;}
+            .auth-screen { position: absolute; border-radius: 24px; }
+        }
+        .desktop-logo { display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- ЭКРАН ВХОДА / РЕГИСТРАЦИИ -->
+    <div id="authScreen" class="auth-screen">
+        <div class="auth-logo">РЖД<br>Соседи</div>
+        
+        <div class="auth-tabs">
+            <div class="auth-tab active" onclick="switchAuthTab('login')">Вход</div>
+            <div class="auth-tab" onclick="switchAuthTab('register')">Регистрация</div>
+        </div>
+
+        <div class="auth-card" id="loginCard">
+            <h2>Вход в аккаунт</h2>
+            <div class="input-group">
+                <label>Логин (Email или телефон)</label>
+                <input type="text" id="loginInput" placeholder="Введите логин...">
+            </div>
+            <div class="input-group">
+                <label>Пароль</label>
+                <input type="password" id="passInput" placeholder="Введите пароль...">
+            </div>
+            <button class="auth-btn" onclick="login()">Войти</button>
+            
+            <div style="margin-top: 20px; text-align: center; font-size: 12px; color: var(--text-muted);">
+                Быстрый вход (демо):
+            </div>
+            <div class="quick-login-list">
+                <div class="quick-login-item" onclick="quickLogin('anna')">
+                    <div class="quick-login-avatar" style="background:#6a1b9a;">АС</div>
+                    <div class="quick-login-info">
+                        <h4>Анна Соколова</h4>
+                        <span>Пассажир • Место 14</span>
+                    </div>
+                </div>
+                <div class="quick-login-item" onclick="quickLogin('dmitry')">
+                    <div class="quick-login-avatar" style="background:#3b5998;">ДП</div>
+                    <div class="quick-login-info">
+                        <h4>Дмитрий Попов</h4>
+                        <span>Пассажир • Место 11</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="auth-card" id="registerCard" style="display: none;">
+            <h2>Создать аккаунт</h2>
+            <div class="input-group">
+                <label>Имя и Фамилия</label>
+                <input type="text" id="regName" placeholder="Иван Иванов">
+            </div>
+            <div class="input-group">
+                <label>Телефон или Email</label>
+                <input type="text" id="regLogin" placeholder="+7 (999) 123-45-67">
+            </div>
+            <div class="input-group">
+                <label>Пароль</label>
+                <input type="password" id="regPass" placeholder="Придумайте пароль...">
+            </div>
+            <button class="auth-btn" onclick="register()">Зарегистрироваться</button>
+        </div>
+    </div>
+
+    <!-- ОСНОВНОЕ ПРИЛОЖЕНИЕ -->
+    <div class="app-wrapper" id="appWrapper">
+        
+        <div class="status-bar">
+            <div class="status-left">
+                <div class="status-dot"></div>
+                В пути
+            </div>
+            <div class="status-right">До Казани: <strong>14ч 43м</strong></div>
+        </div>
+
+        <div class="desktop-logo">РЖД<br>Соседи</div>
+
+        <nav class="bottom-nav">
+            <a class="nav-item active" onclick="openTab(event, 'tab-trip')">
+                <svg viewBox="0 0 24 24"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+                <span>Поездка</span>
+            </a>
+            <a class="nav-item" onclick="openTab(event, 'tab-people')">
+                <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                <span>Попутчики</span>
+            </a>
+            <a class="nav-item" onclick="openTab(event, 'tab-chats')">
+                <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg>
+                <span>Сообщения</span>
+            </a>
+            <a class="nav-item" onclick="openTab(event, 'tab-profile')">
+                <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                <span>Профиль</span>
+            </a>
+        </nav>
+
+        <main class="main-content">
+            <!-- ВКЛАДКА 1: ПОЕЗДКА -->
+            <div id="tab-trip" class="tab-content active">
+                <div class="ticket-card card">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted);">
+                        <span>Поезд <strong style="color:var(--text-main)">002Э «Татарстан»</strong></span>
+                        <span>27 сент.</span>
+                    </div>
+                    <div class="ticket-route">
+                        <div class="ticket-point">
+                            <h2>Москва</h2>
+                            <p>Казанский вокзал</p>
+                            <div class="ticket-time">13:45</div>
+                        </div>
+                        <div class="ticket-line"></div>
+                        <div class="ticket-point" style="text-align: right;">
+                            <h2>Казань</h2>
+                            <p>Казань-Пасс.</p>
+                            <div class="ticket-time">06:28 <sup style="font-size:10px">+1</sup></div>
+                        </div>
+                    </div>
+                    <div class="ticket-details">
+                        <div><span>ВАГОН</span>8</div>
+                        <div><span>МЕСТО</span><span id="ticketSeat">14</span></div>
+                        <div><span>КЛАСС</span>Плацкарт</div>
+                    </div>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-text">
+                        <h3>🌙 Тихий вагон</h3>
+                        <p>Исключить меня из ИИ-подбора</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" onchange="showToast('Настройки конфиденциальности обновлены')">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="card timeline-card">
+                    <div class="card-title">Остановки и активности</div>
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-title">Владимир</div>
+                            <div class="timeline-time">16:02 – 16:05 • 3 мин</div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-title">Нижний Новгород <span class="badge">прогулка</span></div>
+                            <div class="timeline-time">17:25 – 17:48 • 17 мин</div>
+                            <div style="font-size:12px; color:var(--text-muted); margin-top:8px; background:#f5f7fa; padding:10px; border-radius:8px;">
+                                🚶‍♂️ Дмитрий и Елена планируют выйти на прогулку.
+                                <button class="btn btn-outline" style="padding:8px; font-size:12px; margin-top:8px; background:#fff;" onclick="showToast('Вы присоединились к прогулке!')">Присоединиться</button>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-dot active"></div>
+                            <div class="timeline-title" style="color:var(--accent)">Казань</div>
+                            <div class="timeline-time">прибытие 06:28</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ВКЛАДКА 2: ПОПУТЧИКИ -->
+            <div id="tab-people" class="tab-content">
+                <div class="ai-card card">
+                    <div class="card-title" style="color: var(--accent);">
+                        <span style="font-size: 18px;">🤖</span> ИИ-подбор попутчиков
+                    </div>
+                    <p style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">Анализируем интересы, маршрут и рейтинг пассажиров вашего вагона.</p>
+                </div>
+
+                <div class="passenger-card card">
+                    <div class="passenger-header">
+                        <div class="passenger-info">
+                            <div class="avatar blue">ДП</div>
+                            <div>
+                                <div class="name-row">
+                                    <h3>Дмитрий Попов</h3> <span>, 34 лет</span>
+                                    <span class="verify-badge" onclick="openVerify('Дмитрий Попов')">✓ Верифицирован</span>
+                                </div>
+                                <div class="rating" onclick="openUserReviews('Дмитрий Попов')" style="cursor:pointer; text-decoration:underline;">★★★★★ 4.9 <span style="color:var(--text-muted)">(47 отзывов)</span></div>
+                            </div>
+                        </div>
+                        <div class="match-percent">⚡ 94%</div>
+                    </div>
+                    <p style="font-size: 13px; color: #555; margin-top: 4px;">«Фотограф, часто езжу в командировки. Люблю хорошие разговоры и поезда».</p>
+                    <div style="display: flex; gap: 8px; margin-top: 4px;">
+                        <button class="btn btn-primary" onclick="showToast('Запрос на знакомство отправлен!')">Познакомиться</button>
+                        <button class="btn btn-warning" onclick="openRatingModal('Дмитрий Попов')">Оценить</button>
+                    </div>
+                </div>
+
+                <div class="passenger-card card">
+                    <div class="passenger-header">
+                        <div class="passenger-info">
+                            <div class="avatar green">ЕК</div>
+                            <div>
+                                <div class="name-row">
+                                    <h3>Елена Козлова</h3> <span>, 29 лет</span>
+                                    <span class="verify-badge" onclick="openVerify('Елена Козлова')">✓ Верифицирована</span>
+                                </div>
+                                <div class="rating" onclick="openUserReviews('Елена Козлова')" style="cursor:pointer; text-decoration:underline;">★★★★★ 4.7 <span style="color:var(--text-muted)">(12 отзывов)</span></div>
+                            </div>
+                        </div>
+                        <div class="match-percent" style="background: #fff3e0; color: var(--warning); border-color: #ffe0b2;">⚡ 87%</div>
+                    </div>
+                    <p style="font-size: 13px; color: #555; margin-top: 4px;">«Аспирант, еду на конференцию. Охотно поболтаю о кино и книгах».</p>
+                    <div style="display: flex; gap: 8px; margin-top: 4px;">
+                        <button class="btn btn-outline" onclick="showToast('Переход в чат...')">Написать</button>
+                        <button class="btn btn-warning" onclick="openRatingModal('Елена Козлова')">Оценить</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ВКЛАДКА 3: СООБЩЕНИЯ -->
+            <div id="tab-chats" class="tab-content">
+                <div class="chat-list">
+                    <div class="chat-item" onclick="openChatRoom('Вагон 8 - Плацкарт', '🚂', 'Дмитрий')">
+                        <div class="chat-icon" style="background: #eee;">🚂</div>
+                        <div class="chat-info">
+                            <div class="chat-top"><h4>Вагон 8 - Плацкарт</h4> <span>15:27</span></div>
+                            <div class="chat-bottom"><p>Дмитрий: Добрый вечер! 👋</p></div>
+                        </div>
+                    </div>
+                    <div class="chat-item" onclick="openChatRoom('Светлана Ивановна', '👩', 'Светлана')">
+                        <div class="chat-icon" style="background: #e3f2fd;">👩</div>
+                        <div class="chat-info">
+                            <div class="chat-top"><h4>Светлана Ивановна</h4> <span>14:08</span></div>
+                            <div class="chat-bottom"><p>Приедем в Нижний через 5 минут 😊</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ВКЛАДКА 4: ПРОФИЛЬ -->
+            <div id="tab-profile" class="tab-content">
+                <div class="profile-container">
+                    <!-- Левая колонка -->
+                    <div class="profile-left">
+                        <div class="profile-header card" style="width:100%;">
+                            <!-- Аватарка с кнопкой редактирования -->
+                            <div class="avatar-large-container" onclick="triggerAvatarUpload()">
+                                <div class="avatar-large" id="profileAvatarText">АС</div>
+                                <img id="profileAvatarImg" style="display:none; width:80px; height:80px; border-radius:50%; object-fit:cover;">
+                                <div class="avatar-edit-overlay">📷</div>
+                            </div>
+                            <input type="file" id="avatarUploadInput" accept="image/*" style="display:none" onchange="handleAvatarUpload(event)">
+                            
+                            <h2 id="displayName">Анна Соколова</h2>
+                            <div style="font-size:12px; color:var(--text-muted);" id="displayAge">31 год</div>
+                            <div class="rating" id="displayRating">★★★★★ 4.8 <span style="color:var(--text-muted)">(23 оценки)</span></div>
+                            
+                            <div style="margin-top: 12px; font-size: 12px; color: var(--success); font-weight: bold; background:#e8f5e9; padding:8px 12px; border-radius:8px; border:1px solid #a5d6a7;">
+                                ✓ Профиль верифицирован
+                            </div>
+                            
+                            <button class="btn btn-primary" style="margin-top: 16px; font-size: 13px;" onclick="openEditProfile()">Редактировать профиль</button>
+                            <button class="btn btn-outline" style="margin-top: 8px; font-size: 12px; padding: 8px;" onclick="logout()">Сменить аккаунт / Выйти</button>
+                        </div>
+                    </div>
+
+                    <!-- Правая колонка (Табы) -->
+                    <div class="profile-right">
+                        <div class="card" style="width:100%;">
+                            <div class="profile-tabs">
+                                <button class="profile-tab-btn active" onclick="switchProfileTab(event, 'p-anketa')">Анкета</button>
+                                <button class="profile-tab-btn" onclick="switchProfileTab(event, 'p-interests')">Интересы</button>
+                                <button class="profile-tab-btn" onclick="switchProfileTab(event, 'p-trips')">Поездки</button>
+                                <button class="profile-tab-btn" onclick="switchProfileTab(event, 'p-reviews')">Мои отзывы</button>
+                            </div>
+                            
+                            <!-- Таб: Анкета -->
+                            <div id="p-anketa" class="profile-tab-content active">
+                                <div style="font-size: 14px; margin-bottom: 20px;">
+                                    <p style="color:var(--text-muted); font-size: 12px; margin-bottom: 8px; font-weight:600;">О СЕБЕ</p>
+                                    <span id="displayAbout">Люблю путешествовать и знакомиться с новыми людьми. Всегда беру с собой несколько настолок — давно знаю, что дорога в Казань тянется приятнее с компанией.</span>
+                                </div>
+                                <div style="font-size: 14px;">
+                                    <p style="color:var(--text-muted); font-size: 12px; margin-bottom: 8px; font-weight:600;">ВЕРИФИКАЦИЯ И ДОКУМЕНТЫ</p>
+                                    <div class="info-row">
+                                        <span class="info-label">Статус личности</span> 
+                                        <span class="info-value green" style="cursor:pointer;" onclick="openVerify('Анна Соколова')">Верифицирована ✓</span>
+                                    </div>
+                                    <div class="info-row"><span class="info-label">Электронный билет</span> <span class="info-value green">Привязан ✓</span></div>
+                                    <div class="info-row"><span class="info-label">Паспортные данные</span> <span class="info-value green">Скрыты (ФЗ-152) ✓</span></div>
+                                </div>
+                            </div>
+
+                            <!-- Таб: Интересы -->
+                            <div id="p-interests" class="profile-tab-content">
+                                <p style="color:var(--text-muted); font-size: 12px; margin-bottom: 12px; font-weight:600;">МОИ УВЛЕЧЕНИЯ</p>
+                                <div class="tags" id="displayTags" style="gap: 10px;">
+                                    <span class="tag highlight" style="font-size: 13px; padding: 8px 14px;">🎲 Настольные игры</span>
+                                    <span class="tag highlight" style="font-size: 13px; padding: 8px 14px;">📚 Чтение</span>
+                                    <span class="tag" style="font-size: 13px; padding: 8px 14px;">🎵 Музыка</span>
+                                    <span class="tag" style="font-size: 13px; padding: 8px 14px;">🚶‍♂️ Экскурсии</span>
+                                </div>
+                                <button class="btn btn-outline" style="margin-top: 20px;" onclick="openEditInterests()">Редактировать интересы</button>
+                            </div>
+
+                            <!-- Таб: Поездки -->
+                            <div id="p-trips" class="profile-tab-content">
+                                <p style="color:var(--text-muted); font-size: 12px; margin-bottom: 12px; font-weight:600;">ИСТОРИЯ ПОЕЗДОК</p>
+                                <div class="info-row">
+                                    <div>
+                                        <div style="font-weight: bold;">Москва — Казань</div>
+                                        <div style="font-size: 12px; color: var(--text-muted);">27 сент. 2026 • Место 14</div>
+                                    </div>
+                                    <span class="info-value green">Предстоит</span>
+                                </div>
+                                <div class="info-row">
+                                    <div>
+                                        <div style="font-weight: bold;">Казань — Москва</div>
+                                        <div style="font-size: 12px; color: var(--text-muted);">12 авг. 2026 • Место 22</div>
+                                    </div>
+                                    <span class="info-value" style="color: var(--text-muted);">Завершена</span>
+                                </div>
+                            </div>
+
+                            <!-- Таб: Отзывы (МОИ) -->
+                            <div id="p-reviews" class="profile-tab-content">
+                                <p style="color:var(--text-muted); font-size: 12px; margin-bottom: 12px; font-weight:600;">ОТЗЫВЫ ОБО МНЕ</p>
+                                
+                                <div class="review-item">
+                                    <div class="review-header">
+                                        <div class="review-author">
+                                            <div class="review-author-avatar">МВ</div>
+                                            <div class="review-author-info">
+                                                <h4>Михаил Волков</h4>
+                                                <span>Поезд 002Э • Москва – Казань</span>
+                                            </div>
+                                        </div>
+                                        <span class="review-stars">★★★★★</span>
+                                    </div>
+                                    <span class="review-date">12 сентября 2026</span>
+                                    <div class="review-text">Очень приятная собеседница! Поделилась настольными играми, время в пути пролетело незаметно.</div>
+                                    <div class="review-criteria">
+                                        <span class="criterion">Общительность: <b>5.0</b></span>
+                                        <span class="criterion">Пунктуальность: <b>5.0</b></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- ЧАТ -->
+        <div id="chatRoom" class="chat-room">
+            <div class="chat-header">
+                <button onclick="closeChatRoom()">←</button>
+                <div class="avatar" style="width: 40px; height: 40px; font-size: 16px;" id="chatRoomAvatar">🚂</div>
+                <div style="flex: 1;">
+                    <h4 id="chatRoomName" style="font-size: 16px; color: var(--text-main);">Название чата</h4>
+                    <div style="font-size: 12px; color: var(--success);">В сети</div>
+                </div>
+            </div>
+            <div class="messages-container" id="messagesContainer"></div>
+            <div class="chat-input-wrapper">
+                <input type="text" id="msgInput" placeholder="Написать сообщение..." onkeypress="handleKeyPress(event)">
+                <button onclick="sendMessage()">➤</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: ОЦЕНКА -->
+    <div class="modal-overlay" id="ratingModal">
+        <div class="modal">
+            <h3>Оцените попутчика</h3>
+            <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 16px;" id="ratingTargetName">Дмитрий Попов</p>
+            <div class="stars" id="starContainer">
+                <span onclick="setRating(1)">★</span>
+                <span onclick="setRating(2)">★</span>
+                <span onclick="setRating(3)">★</span>
+                <span onclick="setRating(4)">★</span>
+                <span onclick="setRating(5)">★</span>
+            </div>
+            <textarea placeholder="Оставьте отзыв (необязательно)..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 16px; font-family: inherit; resize: none;" rows="3" id="reviewTextInput"></textarea>
+            <button class="btn btn-primary" onclick="submitRating()">Отправить оценку</button>
+            <button class="btn btn-outline" style="margin-top: 8px; border: none;" onclick="closeRatingModal()">Отмена</button>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: ПРОСМОТР ОТЗЫВОВ -->
+    <div class="modal-overlay" id="userReviewsModal">
+        <div class="modal" style="text-align: left;">
+            <button class="modal-close-btn" onclick="closeUserReviews()">✕</button>
+            <h3 style="text-align: center; margin-top: 8px;">Отзывы о попутчике</h3>
+            <p style="text-align: center; font-size: 14px; color: var(--text-muted); margin-bottom: 16px;" id="reviewViewTargetName">Дмитрий Попов</p>
+            
+            <div class="review-item">
+                <div class="review-header">
+                    <div class="review-author">
+                        <div class="review-author-avatar">АС</div>
+                        <div class="review-author-info">
+                            <h4>Анна Соколова</h4>
+                            <span>Поезд 002Э • Москва – Казань</span>
+                        </div>
+                    </div>
+                    <span class="review-stars">★★★★★</span>
+                </div>
+                <span class="review-date">28 сентября 2026</span>
+                <div class="review-text">Отличный собеседник, помог с багажом. Очень интересно рассказывает про фотографию и путешествия. Рекомендую!</div>
+                <div class="review-criteria">
+                    <span class="criterion">Общительность: <b>5.0</b></span>
+                    <span class="criterion">Помощь: <b>5.0</b></span>
+                </div>
+            </div>
+            <div class="review-item">
+                <div class="review-header">
+                    <div class="review-author">
+                        <div class="review-author-avatar">ИП</div>
+                        <div class="review-author-info">
+                            <h4>Иван Петров</h4>
+                            <span>Поезд 146М • СПб – Москва</span>
+                        </div>
+                    </div>
+                    <span class="review-stars">★★★★☆</span>
+                </div>
+                <span class="review-date">10 августа 2026</span>
+                <div class="review-text">Спокойно ехали, без лишних разговоров. Всё было вежливо и корректно.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: ВЕРИФИКАЦИЯ -->
+    <div class="modal-overlay" id="verifyModal">
+        <div class="modal" style="text-align: center;">
+            <div style="font-size: 50px; color: var(--success); margin-bottom: 16px;">✓</div>
+            <h3>Профиль верифицирован</h3>
+            <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 16px;" id="verifyTargetName">Пользователь</p>
+            <div style="background: var(--bg-main); padding: 16px; border-radius: 12px; text-align: left; font-size: 13px; margin-bottom: 16px;">
+                <div class="info-row" style="padding: 8px 0;"><span class="info-label">Документ:</span> <span class="info-value">Паспорт РФ</span></div>
+                <div class="info-row" style="padding: 8px 0;"><span class="info-label">Проверка:</span> <span class="info-value green">Госуслуги / МВД</span></div>
+                <div class="info-row" style="padding: 8px 0;"><span class="info-label">Биометрия:</span> <span class="info-value green">Пройдена</span></div>
+                <div class="info-row" style="padding: 8px 0; border-bottom: none;"><span class="info-label">Статус:</span> <span class="info-value green">Надежный попутчик</span></div>
+            </div>
+            <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 16px;">Персональные данные скрыты в соответствии с ФЗ-152.</p>
+            <button class="btn btn-primary" onclick="closeVerify()">Понятно</button>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: РЕДАКТИРОВАНИЕ ПРОФИЛЯ -->
+    <div class="modal-overlay" id="editProfileModal">
+        <div class="modal" style="text-align: left;">
+            <button class="modal-close-btn" onclick="closeEditProfile()">✕</button>
+            <h3 style="text-align: center; margin-top: 8px;">Редактировать профиль</h3>
+            
+            <label class="edit-label">Имя и Фамилия</label>
+            <input type="text" id="editNameInput" class="edit-input" placeholder="Введите имя...">
+            
+            <label class="edit-label">Статус / О себе</label>
+            <textarea id="editAboutInput" class="edit-input" rows="4" placeholder="Расскажите о себе..."></textarea>
+            
+            <button class="btn btn-primary" onclick="saveProfile()">Сохранить изменения</button>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: РЕДАКТИРОВАНИЕ ИНТЕРЕСОВ -->
+    <div class="modal-overlay" id="editInterestsModal">
+        <div class="modal" style="text-align: left;">
+            <button class="modal-close-btn" onclick="closeEditInterests()">✕</button>
+            <h3 style="text-align: center; margin-top: 8px;">Редактировать интересы</h3>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">Введите интересы через запятую</p>
+            
+            <input type="text" id="editInterestsInput" class="edit-input" placeholder="Настольные игры, Чтение, Музыка...">
+            
+            <button class="btn btn-primary" onclick="saveInterests()">Сохранить</button>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Текст уведомления</div>
+
+    <script>
+        // ==========================================
+        // БАЗА ДАННЫХ АККАУНТОВ (ДЕМО)
+        // ==========================================
+        const usersDB = {
+            'anna': {
+                password: '123',
+                name: 'Анна Соколова',
+                age: '31 год',
+                rating: '★★★★★ 4.8 (23 оценки)',
+                about: 'Люблю путешествовать и знакомиться с новыми людьми. Всегда беру с собой несколько настолок — давно знаю, что дорога в Казань тянется приятнее с компанией.',
+                seat: '14',
+                avatarColor: '#6a1b9a',
+                avatarText: 'АС',
+                interests: ['🎲 Настольные игры', '📚 Чтение', '🎵 Музыка', '🚶‍♂️ Экскурсии']
+            },
+            'dmitry': {
+                password: '123',
+                name: 'Дмитрий Попов',
+                age: '34 года',
+                rating: '★★★★★ 4.9 (47 отзывов)',
+                about: 'Фотограф, часто езжу в командировки. Люблю хорошие разговоры и поезда.',
+                seat: '11',
+                avatarColor: '#3b5998',
+                avatarText: 'ДП',
+                interests: ['📸 Фотография', '🎲 Настольные игры', '⛰️ Горы', '🎸 Рок-музыка']
+            }
+        };
+
+        let currentUser = null; // Текущий авторизованный пользователь
+
+        // ==========================================
+        // АВТОРИЗАЦИЯ И РЕГИСТРАЦИЯ
+        // ==========================================
+        
+        function switchAuthTab(tab) {
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            if (tab === 'login') {
+                document.querySelectorAll('.auth-tab')[0].classList.add('active');
+                document.getElementById('loginCard').style.display = 'block';
+                document.getElementById('registerCard').style.display = 'none';
+            } else {
+                document.querySelectorAll('.auth-tab')[1].classList.add('active');
+                document.getElementById('loginCard').style.display = 'none';
+                document.getElementById('registerCard').style.display = 'block';
+            }
+        }
+
+        function login() {
+            const loginInput = document.getElementById('loginInput').value.trim();
+            const passInput = document.getElementById('passInput').value.trim();
+            
+            // Поиск по логину в "базе"
+            const user = usersDB[loginInput];
+            
+            if (user && user.password === passInput) {
+                authenticate(loginInput);
+            } else {
+                alert("Неверный логин или пароль. (Попробуйте кнопки быстрого входа ниже)");
+            }
+        }
+
+        function quickLogin(loginName) {
+            authenticate(loginName);
+        }
+
+        function register() {
+            const name = document.getElementById('regName').value.trim();
+            const loginName = document.getElementById('regLogin').value.trim();
+            const pass = document.getElementById('regPass').value.trim();
+
+            if (!name || !loginName || !pass) {
+                alert("Пожалуйста, заполните все поля!");
+                return;
+            }
+            if (usersDB[loginName]) {
+                alert("Пользователь с таким логином уже существует!");
+                return;
+            }
+
+            // Создаем нового пользователя
+            usersDB[loginName] = {
+                password: pass,
+                name: name,
+                age: 'Не указан',
+                rating: 'Нет оценок',
+                about: 'Новый пользователь сервиса РЖД Соседи.',
+                seat: '--',
+                avatarColor: '#e21a1a',
+                avatarText: name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2),
+                interests: ['Путешествия']
+            };
+
+            alert("Регистрация успешна! Теперь войдите.");
+            switchAuthTab('login');
+            document.getElementById('loginInput').value = loginName;
+            document.getElementById('passInput').value = pass;
+        }
+
+        function authenticate(loginName) {
+            currentUser = loginName;
+            const data = usersDB[loginName];
+
+            // Заполняем интерфейс данными пользователя
+            document.getElementById('displayName').innerText = data.name;
+            document.getElementById('displayAge').innerText = data.age;
+            document.getElementById('displayRating').innerHTML = data.rating;
+            document.getElementById('displayAbout').innerText = data.about;
+            document.getElementById('ticketSeat').innerText = data.seat;
+            
+            // Аватарка
+            const avatarText = document.getElementById('profileAvatarText');
+            avatarText.innerText = data.avatarText;
+            avatarText.style.backgroundColor = data.avatarColor;
+            avatarText.style.display = 'flex';
+            document.getElementById('profileAvatarImg').style.display = 'none';
+
+            // Интересы
+            renderInterests(data.interests);
+
+            // Переключаем экраны
+            document.getElementById('authScreen').classList.add('hidden');
+            document.getElementById('appWrapper').classList.add('active');
+            document.querySelector('.nav-item').click(); // На главную
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('authScreen').classList.remove('hidden');
+            document.getElementById('appWrapper').classList.remove('active');
+            document.getElementById('loginInput').value = '';
+            document.getElementById('passInput').value = '';
+            switchAuthTab('login');
+        }
+
+        // ==========================================
+        // НАВИГАЦИЯ И UI
+        // ==========================================
+        
+        function openTab(evt, tabName) {
+            document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+            document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+            document.getElementById('chatRoom').classList.remove('active');
+        }
+
+        function showToast(message) {
+            var toast = document.getElementById("toast");
+            toast.innerText = message;
+            toast.className = "toast show";
+            setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
+        }
+
+        function switchProfileTab(evt, tabName) {
+            document.querySelectorAll(".profile-tab-content").forEach(el => el.classList.remove("active"));
+            document.querySelectorAll(".profile-tab-btn").forEach(el => el.classList.remove("active"));
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+
+        // ==========================================
+        // РЕДАКТИРОВАНИЕ ПРОФИЛЯ
+        // ==========================================
+        
+        function triggerAvatarUpload() {
+            document.getElementById('avatarUploadInput').click();
+        }
+
+        function handleAvatarUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.getElementById('profileAvatarImg');
+                    const txt = document.getElementById('profileAvatarText');
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                    txt.style.display = 'none';
+                    showToast('Аватарка обновлена!');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function openEditProfile() {
+            document.getElementById('editNameInput').value = document.getElementById('displayName').innerText;
+            document.getElementById('editAboutInput').value = document.getElementById('displayAbout').innerText;
+            document.getElementById('editProfileModal').classList.add('active');
+        }
+
+        function closeEditProfile() { document.getElementById('editProfileModal').classList.remove('active'); }
+
+        function saveProfile() {
+            const newName = document.getElementById('editNameInput').value.trim();
+            const newAbout = document.getElementById('editAboutInput').value.trim();
+            
+            if (newName) document.getElementById('displayName').innerText = newName;
+            if (newAbout) document.getElementById('displayAbout').innerText = newAbout;
+            
+            closeEditProfile();
+            showToast('Профиль успешно обновлен!');
+        }
+
+        function openEditInterests() {
+            const currentTags = usersDB[currentUser].interests.join(', ');
+            document.getElementById('editInterestsInput').value = currentTags;
+            document.getElementById('editInterestsModal').classList.add('active');
+        }
+
+        function closeEditInterests() { document.getElementById('editInterestsModal').classList.remove('active'); }
+
+        function saveInterests() {
+            const input = document.getElementById('editInterestsInput').value;
+            const interests = input.split(',').map(i => i.trim()).filter(i => i !== '');
+            
+            usersDB[currentUser].interests = interests;
+            renderInterests(interests);
+            
+            closeEditInterests();
+            showToast('Интересы обновлены!');
+        }
+
+        function renderInterests(interests) {
+            const tagsContainer = document.getElementById('displayTags');
+            tagsContainer.innerHTML = '';
+            
+            if (interests.length > 0) {
+                interests.forEach((interest, index) => {
+                    const span = document.createElement('span');
+                    span.className = index < 2 ? 'tag highlight' : 'tag';
+                    span.style.fontSize = '13px';
+                    span.style.padding = '8px 14px';
+                    span.innerText = interest;
+                    tagsContainer.appendChild(span);
+                });
+            } else {
+                tagsContainer.innerHTML = '<span style="color:var(--text-muted); font-size:13px;">Интересы не указаны</span>';
+            }
+        }
+
+        // ==========================================
+        // ЧАТ
+        // ==========================================
+        
+        function openChatRoom(name, avatar, senderName) {
+            document.getElementById('chatRoomName').innerText = name;
+            document.getElementById('chatRoomAvatar').innerText = avatar;
+            const container = document.getElementById('messagesContainer');
+            container.innerHTML = ''; 
+            addMessageToContainer(senderName, 'Привет! Я тоже еду в этом вагоне.', 'in');
+            document.getElementById('chatRoom').classList.add('active');
+        }
+        
+        function closeChatRoom() { document.getElementById('chatRoom').classList.remove('active'); }
+        
+        function addMessageToContainer(sender, text, type) {
+            const container = document.getElementById('messagesContainer');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `msg ${type}`;
+            msgDiv.innerText = text;
+            container.appendChild(msgDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function sendMessage() {
+            const input = document.getElementById('msgInput');
+            if (input.value.trim()) {
+                addMessageToContainer('Вы', input.value, 'out');
+                input.value = '';
+                setTimeout(() => addMessageToContainer('Собеседник', 'Отличная идея!', 'in'), 1000);
+            }
+        }
+        
+        function handleKeyPress(e) { if (e.key === 'Enter') sendMessage(); }
+
+        // ==========================================
+        // ОЦЕНКА И ОТЗЫВЫ
+        // ==========================================
+        
+        let currentRating = 0;
+        let currentTarget = "";
+        
+        function openRatingModal(name) {
+            currentTarget = name;
+            document.getElementById('ratingTargetName').innerText = name;
+            document.getElementById('ratingModal').classList.add('active');
+            setRating(0);
+            document.getElementById('reviewTextInput').value = '';
+        }
+        
+        function closeRatingModal() { document.getElementById('ratingModal').classList.remove('active'); }
+        
+        function setRating(rating) {
+            currentRating = rating;
+            document.querySelectorAll('#starContainer span').forEach((star, i) => {
+                star.classList.toggle('active', i < rating);
+            });
+        }
+        
+        function submitRating() {
+            if (currentRating === 0) return showToast('Пожалуйста, выберите оценку');
+            closeRatingModal();
+            showToast(`Спасибо! Вы оценили ${currentTarget} на ${currentRating} звезд.`);
+        }
+
+        function openUserReviews(name) {
+            document.getElementById('reviewViewTargetName').innerText = name;
+            document.getElementById('userReviewsModal').classList.add('active');
+        }
+        
+        function closeUserReviews() { document.getElementById('userReviewsModal').classList.remove('active'); }
+
+        function openVerify(name) {
+            document.getElementById('verifyTargetName').innerText = name;
+            document.getElementById('verifyModal').classList.add('active');
+        }
+        
+        function closeVerify() { document.getElementById('verifyModal').classList.remove('active'); }
+    </script>
+</body>
+</html>
